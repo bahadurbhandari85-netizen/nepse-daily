@@ -1,0 +1,38 @@
+name: Daily NEPSE Data Fetch
+
+# Downloads today's raw NEPSE data at 8:00 PM Nepal time (UTC+5:45 -> 14:15 UTC)
+# and commits it to the repo. Does NOT run the analysis pipeline or rebuild
+# any app -- this only captures the raw daily CSV.
+on:
+  schedule:
+    - cron: '15 14 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  fetch:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: pip install pandas requests beautifulsoup4 lxml
+
+      - name: Fetch today's data
+        run: python3 fetch_nepse_daily.py --outdir data_input
+
+      - name: Commit and push if a new file was downloaded
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --staged --quiet || git commit -m "Daily data fetch: $(date -u +'%Y-%m-%d %H:%M UTC')"
+          git push
